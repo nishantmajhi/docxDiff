@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>docxDiff</title>
+    <!-- The browser tab's icon: the Start button's flag. -->
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="css/style.css" />
+    <link rel="stylesheet" href="css/games.css" />
+  </head>
+  <body>
+    <!-- The two DiffPad windows are drawn into #app by js/app.js. -->
+    <main class="desktop">
+      <div id="app"></div>
+    </main>
+
+    <div class="taskbar">
+      <div class="start">
+        <button class="start-btn" id="start-btn" aria-haspopup="true">
+          <svg
+            viewBox="0 0 16 14"
+            shape-rendering="crispEdges"
+            aria-hidden="true"
+          >
+            <path d="M1 1h6v5H1z" fill="#f00" />
+            <path d="M8 1h6v5H8z" fill="#0a0" />
+            <path d="M1 7h6v5H1z" fill="#00f" />
+            <path d="M8 7h6v5H8z" fill="#ff0" />
+            <path d="M0 13h15" stroke="#000" />
+          </svg>
+          Start
+        </button>
+        <div class="start-menu" id="start-menu" role="menu" hidden>
+          <div class="start-banner">
+            <span>docx<b>Diff</b></span>
+          </div>
+          <div class="start-items">
+            <!-- js/desktop.js fills in each game's icon as the game registers. -->
+            <button class="menu-item" data-game="freecell" role="menuitem">
+              <span class="sm-icon"></span><span><u>F</u>reeCell</span>
+            </button>
+            <button class="menu-item" data-game="hearts" role="menuitem">
+              <span class="sm-icon"></span><span><u>H</u>earts</span>
+            </button>
+            <button class="menu-item" data-game="minesweeper" role="menuitem">
+              <span class="sm-icon"></span><span><u>M</u>inesweeper</span>
+            </button>
+            <button class="menu-item" data-game="solitaire" role="menuitem">
+              <span class="sm-icon"></span><span><u>S</u>olitaire</span>
+            </button>
+            <div class="menu-sep"></div>
+            <button class="menu-item" id="reset-btn" role="menuitem" disabled>
+              <span class="sm-icon">
+                <svg
+                  viewBox="0 0 16 16"
+                  shape-rendering="crispEdges"
+                  aria-hidden="true"
+                >
+                  <path d="M2.5 1.5h7l3 3v10h-10z" fill="#fff" stroke="#000" />
+                  <path d="M9.5 1.5v3h3" fill="#c0c0c0" stroke="#000" />
+                  <path d="M4 7h3v1H4zM4 9h6v1H4zM4 11h6v1H4z" fill="#000080" />
+                  <path d="M10 8h4v1h1v4h-1v1h-4v-1H9V9h1z" fill="#008000" />
+                  <path d="M11 10h2v2h-2z" fill="#fff" />
+                </svg>
+              </span>
+              <span>Start o<u>v</u>er</span>
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="task-sep"></div>
+      <div class="tasks" id="tasks"></div>
+      <div class="tasks" id="game-tasks"></div>
+      <div
+        class="tray"
+        title="Both documents are read in this browser. Nothing is uploaded anywhere."
+      >
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 14 14"
+          shape-rendering="crispEdges"
+          aria-hidden="true"
+        >
+          <path d="M3 6h8v7H3z" fill="#c0a000" stroke="#000" />
+          <path d="M5 6V4a2 2 0 0 1 4 0v2" fill="none" stroke="#000" />
+        </svg>
+        <span class="tray-note">Offline &middot; nothing uploaded</span>
+      </div>
+    </div>
+
+    <!-- Game windows open here, above the two DiffPad windows. -->
+    <div class="game-layer" id="game-layer"></div>
+
+    <div
+      class="modal"
+      id="about"
+      role="dialog"
+      aria-labelledby="about-title"
+      hidden
+    >
+      <div class="msgbox">
+        <div class="titlebar">
+          <span class="title-text" id="about-title">About docxDiff</span>
+        </div>
+        <div class="msgbox-body">
+          <svg
+            class="icon32"
+            viewBox="0 0 32 32"
+            shape-rendering="crispEdges"
+            aria-hidden="true"
+          >
+            <path d="M6.5 2.5h14l6 6v21h-20z" fill="#fff" stroke="#000" />
+            <path d="M20.5 2.5v6h6" fill="#c0c0c0" stroke="#000" />
+            <path
+              d="M9 12.5h14M9 15.5h14M9 18.5h14M9 21.5h14M9 24.5h9"
+              stroke="#000080"
+            />
+          </svg>
+          <div>
+            <p><b>docxDiff</b></p>
+            <p>
+              Compare two Word documents, entirely in your browser. Nothing is
+              uploaded anywhere.
+            </p>
+            <p>
+              Includes headers, footers, tables, lists, footnotes, comments,
+              hyperlinks, images, and tracked changes.
+            </p>
+          </div>
+        </div>
+        <div class="msgbox-actions">
+          <button class="btn95" data-close>
+            <span class="focus-ring">OK</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <input type="file" id="file-input-left" accept=".docx,.docm" />
+    <input type="file" id="file-input-right" accept=".docx,.docm" />
+
+    <!--
+      JSZip is served from this directory rather than from a CDN. The whole
+      point of this tool is that a document never leaves the machine it is on,
+      and a page that fetches its unpinned unzipper from someone else's server
+      on every load cannot promise that: whoever serves that file can read
+      every document opened here. Keeping a copy also means the page works
+      with no network at all, which is the other half of the same promise.
+      See vendor/jszip-LICENSE.markdown; the file is unmodified.
+    -->
+    <script src="vendor/jszip.min.js"></script>
+    <script src="js/app.js"></script>
+    <!-- The Start menu, the game windows and the games themselves. -->
+    <script src="js/desktop.js"></script>
+    <script src="js/games/cards.js"></script>
+    <script src="js/games/minesweeper.js"></script>
+    <script src="js/games/solitaire.js"></script>
+    <script src="js/games/freecell.js"></script>
+    <script src="js/games/hearts.js"></script>
+  </body>
+</html>

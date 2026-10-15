@@ -1,0 +1,1029 @@
+/*
+ * docxDiff -- a Windows 95 desktop with one DiffPad window per document.
+ *
+ * Only system fonts are named and every icon is inline, so the page still
+ * makes no network request of any kind.
+ */
+
+:root {
+  --desktop: #008080;
+  --face: #c0c0c0;
+  --light: #dfdfdf;
+  --hilite: #ffffff;
+  --shadow: #808080;
+  --dark: #0a0a0a;
+  --title: #000080;
+  --title-off: #808080;
+  --link: #0000ff;
+  --tooltip: #ffffe1;
+
+  --removed-bg: #ffe6e6;
+  --removed-text: #a00000;
+  --del-bg: #ffc4c4;
+  --del-text: #800000;
+  --added-bg: #e2f6e2;
+  --added-text: #006400;
+  --ins-bg: #b6eeb6;
+  --ins-text: #004d00;
+  --fmt-bg: #ffffe1;
+  --fmt-bar: #808000;
+
+  --ui-font:
+    "MS Sans Serif", "Microsoft Sans Serif", Tahoma, Geneva, "Segoe UI",
+    Verdana, sans-serif;
+  --doc-font:
+    "Times New Roman", Times, "Liberation Serif", "Nimbus Roman", serif;
+
+  /* Win95 bevels, outermost line first. */
+  --raised:
+    inset -1px -1px var(--dark), inset 1px 1px var(--hilite),
+    inset -2px -2px var(--shadow), inset 2px 2px var(--light);
+  --sunken:
+    inset -1px -1px var(--hilite), inset 1px 1px var(--shadow),
+    inset -2px -2px var(--light), inset 2px 2px var(--dark);
+  --pressed:
+    inset -1px -1px var(--hilite), inset 1px 1px var(--dark),
+    inset -2px -2px var(--light), inset 2px 2px var(--shadow);
+  --thin-sunken: inset -1px -1px var(--hilite), inset 1px 1px var(--shadow);
+  --thin-raised: inset -1px -1px var(--shadow), inset 1px 1px var(--hilite);
+
+  /*
+   * Window geometry. The diff's scroller is laid over both windows' pages,
+   * so it has to know exactly where a page starts and ends; these fix every
+   * height and inset that decides that.
+   */
+  --gap: 34px; /* desktop between the two windows */
+  --win-pad: 3px; /* window frame */
+  --title-h: 18px;
+  --menu-h: 20px;
+  --bevel: 2px; /* the page's sunken edge */
+  --status-h: 20px;
+  --status-gap: 2px;
+  --taskbar-h: 28px;
+  --edge: calc(var(--win-pad) + var(--bevel));
+  --page-top: calc(
+    var(--win-pad) + var(--title-h) + var(--menu-h) + var(--bevel)
+  );
+  --page-bottom: calc(
+    var(--bevel) + var(--status-gap) + var(--status-h) + var(--win-pad)
+  );
+}
+
+* {
+  box-sizing: border-box;
+}
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+body {
+  background: var(--desktop);
+  color: #000;
+  font-family: var(--ui-font);
+  font-size: 11px;
+  line-height: normal;
+  overflow: hidden;
+}
+button {
+  font: inherit;
+  color: inherit;
+}
+[hidden] {
+  display: none !important;
+}
+input[type="file"] {
+  display: none;
+}
+u {
+  text-decoration: underline;
+}
+.icon16 {
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+.icon32 {
+  width: 32px;
+  height: 32px;
+  flex: none;
+}
+
+/* ---------------------------------------------------------------- desktop */
+
+.desktop {
+  position: fixed;
+  inset: 0 0 var(--taskbar-h) 0;
+  padding: 12px;
+}
+#app,
+.desk {
+  height: 100%;
+  min-height: 0;
+}
+.desk {
+  position: relative;
+  --sbw: 16px;
+}
+.frames {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  column-gap: var(--gap);
+}
+
+/* ---------------------------------------------------------------- window */
+
+.window {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  padding: var(--win-pad);
+  background: var(--face);
+  box-shadow: var(--raised);
+}
+.titlebar {
+  height: var(--title-h);
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 0 2px 0 2px;
+  background: var(--title);
+  color: #fff;
+  font-weight: 700;
+  user-select: none;
+}
+.window.inactive .titlebar {
+  background: var(--title-off);
+  color: var(--face);
+}
+.title-text {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.title-btn {
+  width: 18px;
+  height: 14px;
+  padding: 0;
+  border: 0;
+  flex: none;
+  background: var(--face);
+  color: #000;
+  box-shadow: var(--raised);
+  display: grid;
+  place-items: center;
+  cursor: default;
+}
+.title-btn svg {
+  width: 12px;
+  height: 10px;
+  fill: currentColor;
+}
+.title-btn:active:not(:disabled) {
+  box-shadow: var(--pressed);
+}
+.title-btn:active:not(:disabled) svg {
+  transform: translate(1px, 1px);
+}
+.title-btn:disabled {
+  color: var(--shadow);
+}
+.title-btn:disabled svg {
+  filter: drop-shadow(1px 1px 0 var(--hilite));
+}
+.title-btn:focus-visible {
+  outline: 1px dotted #000;
+  outline-offset: -4px;
+}
+
+/* ---------------------------------------------------------------- menus */
+
+.menubar {
+  height: var(--menu-h);
+  flex: none;
+  display: flex;
+  align-items: center;
+}
+.menu {
+  position: relative;
+}
+.menu-title {
+  height: 18px;
+  padding: 0 6px;
+  border: 0;
+  background: transparent;
+  cursor: default;
+}
+.menu-title:focus-visible {
+  outline: 1px dotted #000;
+  outline-offset: -2px;
+}
+.menu.open .menu-title {
+  background: var(--title);
+  color: #fff;
+}
+.menu-list {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 40;
+  min-width: 160px;
+  padding: 3px;
+  background: var(--face);
+  box-shadow: var(--raised);
+}
+.menu.open .menu-list {
+  display: block;
+}
+.menu-item {
+  display: block;
+  width: 100%;
+  height: 20px;
+  padding: 0 18px 0 20px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  white-space: nowrap;
+  cursor: default;
+}
+.menu-item:hover:not(:disabled),
+.menu-item:focus-visible:not(:disabled) {
+  background: var(--title);
+  color: #fff;
+  outline: none;
+}
+.menu-item:disabled {
+  color: var(--shadow);
+  text-shadow: 1px 1px 0 var(--hilite);
+}
+.menu-sep {
+  height: 2px;
+  margin: 3px 1px;
+  box-shadow:
+    inset 0 1px var(--shadow),
+    inset 0 -1px var(--hilite);
+}
+
+/* ---------------------------------------------------------------- page */
+
+.page {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  display: flex;
+  padding: var(--bevel);
+  background: #fff;
+  box-shadow: var(--sunken);
+}
+.page-scroll {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+.statusbar {
+  height: var(--status-h);
+  flex: none;
+  margin-top: var(--status-gap);
+  display: flex;
+  gap: 2px;
+}
+.statusbar > span {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 5px;
+  box-shadow: var(--thin-sunken);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.statusbar .sb-main {
+  flex: 1;
+  min-width: 0;
+}
+.statusbar .sb-cell {
+  flex: none;
+  min-width: 64px;
+}
+.swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  flex: none;
+  box-shadow: inset 0 0 0 1px #000;
+}
+.swatch.removed {
+  background: var(--del-bg);
+}
+.swatch.added {
+  background: var(--ins-bg);
+}
+.swatch.fmt {
+  background: var(--fmt-bg);
+  margin-left: 8px;
+}
+
+/* ---------------------------------------------------------------- scrollbars */
+
+.page-scroll::-webkit-scrollbar,
+.diff-scroll::-webkit-scrollbar,
+.diff-scrollbar-left::-webkit-scrollbar {
+  width: 16px;
+}
+.page-scroll::-webkit-scrollbar-track,
+.diff-scroll::-webkit-scrollbar-track,
+.diff-scrollbar-left::-webkit-scrollbar-track {
+  background-color: var(--face);
+  background-image: repeating-conic-gradient(
+    var(--face) 0 25%,
+    var(--hilite) 0 50%
+  );
+  background-size: 2px 2px;
+}
+.page-scroll::-webkit-scrollbar-thumb,
+.diff-scroll::-webkit-scrollbar-thumb,
+.diff-scrollbar-left::-webkit-scrollbar-thumb {
+  background: var(--face);
+  box-shadow: var(--raised);
+}
+.page-scroll::-webkit-scrollbar-button:single-button,
+.diff-scroll::-webkit-scrollbar-button:single-button,
+.diff-scrollbar-left::-webkit-scrollbar-button:single-button {
+  display: block;
+  height: 16px;
+  background-color: var(--face);
+  background-repeat: no-repeat;
+  background-position: center;
+  box-shadow: var(--raised);
+}
+.page-scroll::-webkit-scrollbar-button:single-button:vertical:decrement,
+.diff-scroll::-webkit-scrollbar-button:single-button:vertical:decrement,
+.diff-scrollbar-left::-webkit-scrollbar-button:single-button:vertical:decrement {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='7' height='4' shape-rendering='crispEdges'%3E%3Cpath d='M3 0h1v1h1v1h1v1h1v1H0V3h1V2h1V1h1z'/%3E%3C/svg%3E");
+}
+.page-scroll::-webkit-scrollbar-button:single-button:vertical:increment,
+.diff-scroll::-webkit-scrollbar-button:single-button:vertical:increment,
+.diff-scrollbar-left::-webkit-scrollbar-button:single-button:vertical:increment {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='7' height='4' shape-rendering='crispEdges'%3E%3Cpath d='M0 0h7v1H6v1H5v1H4v1H3V3H2V2H1V1H0z'/%3E%3C/svg%3E");
+}
+.page-scroll::-webkit-scrollbar-button:single-button:active,
+.diff-scroll::-webkit-scrollbar-button:single-button:active,
+.diff-scrollbar-left::-webkit-scrollbar-button:single-button:active {
+  box-shadow: var(--thin-sunken);
+}
+/*
+ * Firefox has no ::-webkit-scrollbar. scrollbar-color is kept to it alone:
+ * Chrome also understands it, and stops honouring the rules above once it
+ * is set.
+ */
+@supports (-moz-appearance: none) {
+  .page-scroll,
+  .diff-scroll,
+  .diff-scrollbar-left {
+    scrollbar-color: var(--face) #e8e8e8;
+  }
+}
+
+/* ---------------------------------------------------------------- diff */
+
+/*
+ * The diff lies over the pages of both (empty) windows. Its grid's column gap
+ * covers the Original page's scrollbar, both inner window edges and the
+ * desktop between them, and is transparent so they show through.
+ */
+.diff-scroll {
+  position: absolute;
+  z-index: 1;
+  top: var(--page-top);
+  bottom: var(--page-bottom);
+  left: var(--edge);
+  right: var(--edge);
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+.diff-scrollbar-left {
+  position: absolute;
+  z-index: 2;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+.diff-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  column-gap: calc(var(--gap) + 2 * var(--edge) + var(--sbw));
+  min-width: 0;
+}
+.doc-preview {
+  padding: 8px 16px 8px 18px;
+}
+.doc-preview > * {
+  padding: 3px 0;
+}
+.cell,
+.doc-preview > * {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.cell {
+  padding: 6px 16px 6px 18px;
+  background: #fff;
+  border-bottom: 1px dotted #c8c8c8;
+}
+.doc-preview,
+.cell {
+  font-family: var(--doc-font);
+  font-size: 15px;
+  line-height: 1.45;
+}
+.cell.gap {
+  background-color: #fff;
+  background-image: repeating-conic-gradient(#e4e4e4 0 25%, #fff 0 50%);
+  background-size: 2px 2px;
+}
+.cell.removed {
+  background: var(--removed-bg);
+}
+.cell.removed .block-p,
+.cell.removed .block-li,
+.cell.removed .block-heading {
+  color: var(--removed-text);
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+}
+.cell.added {
+  background: var(--added-bg);
+}
+.cell.added .block-p,
+.cell.added .block-li,
+.cell.added .block-heading {
+  color: var(--added-text);
+}
+.cell.fmt-changed {
+  background: var(--fmt-bg);
+  box-shadow: inset 3px 0 0 var(--fmt-bar);
+}
+.del {
+  background: var(--del-bg);
+  color: var(--del-text);
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+  padding: 0 1px;
+}
+.ins {
+  background: var(--ins-bg);
+  color: var(--ins-text);
+  padding: 0 1px;
+}
+.ws-dot {
+  opacity: 0.6;
+}
+
+/* ---------------------------------------------------------------- blocks */
+
+.block-p {
+  margin: 0;
+}
+.block-heading {
+  font-weight: 700;
+}
+.block-heading.h1 {
+  font-size: 21px;
+}
+.block-heading.h2 {
+  font-size: 18px;
+}
+.block-heading.h3,
+.block-heading.h4,
+.block-heading.h5,
+.block-heading.h6 {
+  font-size: 16px;
+}
+.block-li {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+}
+.block-li .li-bullet {
+  flex: none;
+}
+.block-divider {
+  text-align: center;
+  color: var(--shadow);
+  font-family: var(--ui-font);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  padding: 2px 0;
+}
+.row-cells {
+  display: flex;
+  margin: 0 -16px 0 -18px;
+}
+.row-cell {
+  flex: 1;
+  min-width: 0;
+  padding: 0 10px;
+  border-right: 1px solid var(--shadow);
+}
+.row-cell:first-child {
+  padding-left: 18px;
+}
+.row-cell:last-child {
+  border-right: none;
+  padding-right: 16px;
+}
+.sec-badge {
+  display: inline-block;
+  margin-right: 7px;
+  padding: 0 4px;
+  font-family: var(--ui-font);
+  font-size: 10px;
+  line-height: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: #000;
+  background: var(--face);
+  box-shadow: var(--raised);
+  vertical-align: 2px;
+}
+.fmt-tag {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 0 4px;
+  font-family: var(--ui-font);
+  font-size: 10px;
+  line-height: 14px;
+  color: #000;
+  background: var(--tooltip);
+  box-shadow: inset 0 0 0 1px #000;
+  vertical-align: 2px;
+  white-space: nowrap;
+}
+.inline-img {
+  display: inline-block;
+  vertical-align: middle;
+}
+.inline-img img {
+  max-height: 60px;
+  max-width: 170px;
+  border: 1px solid var(--shadow);
+  vertical-align: middle;
+}
+.trk-ins {
+  text-decoration: underline wavy #008000;
+  text-decoration-thickness: 1px;
+}
+.trk-del {
+  text-decoration: line-through;
+  text-decoration-color: #a00000;
+  color: #800000;
+  opacity: 0.85;
+}
+.doc-link {
+  color: var(--link);
+  text-decoration: underline;
+  cursor: default;
+}
+.fn-ref {
+  font-size: 0.75em;
+  line-height: 0;
+}
+.fn-ref-link {
+  color: var(--link);
+  text-decoration: none;
+  font-weight: 700;
+  scroll-margin-top: 40px;
+}
+.fn-ref-link:hover {
+  text-decoration: underline;
+}
+.fn-marker {
+  font-size: 0.75em;
+  line-height: 0;
+  font-weight: 700;
+  scroll-margin-top: 40px;
+  margin-right: 3px;
+}
+.fn-marker-link {
+  color: var(--link);
+  text-decoration: none;
+}
+.fn-marker-link:hover {
+  text-decoration: underline;
+}
+.fn-marker:target,
+.fn-ref-link:target {
+  background: var(--title);
+  color: #fff;
+}
+
+/* ---------------------------------------------------------------- dropzone */
+
+.dropzone {
+  position: relative;
+  flex: 1;
+  margin: 18px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-align: center;
+  outline: 1px dotted #000;
+  outline-offset: -1px;
+  cursor: default;
+  user-select: none;
+}
+.dropzone.drag {
+  outline: 2px solid var(--title);
+  background: #eef0ff;
+}
+/* The error box stands in for the dropzone's own prompt while it is up. */
+.dropzone.error > :not(.dz-error) {
+  visibility: hidden;
+}
+.dropzone .dz-title {
+  margin: 4px 0 0;
+  font-weight: 700;
+  font-size: 12px;
+}
+.dropzone .dz-sub {
+  margin: 0 0 4px;
+}
+.btn95 {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 75px;
+  height: 23px;
+  padding: 0 10px;
+  background: var(--face);
+  box-shadow:
+    inset 0 0 0 1px #000,
+    inset -2px -2px var(--dark),
+    inset 2px 2px var(--hilite),
+    inset -3px -3px var(--shadow),
+    inset 3px 3px var(--light);
+}
+button.btn95 {
+  border: 0;
+  cursor: default;
+}
+.dropzone:active .dz-open,
+.btn95:active {
+  box-shadow:
+    inset 0 0 0 1px #000,
+    var(--pressed);
+}
+.focus-ring {
+  padding: 0 2px;
+  outline: 1px dotted #000;
+  outline-offset: 1px;
+}
+.dz-loading {
+  margin-top: 6px;
+}
+.progress {
+  display: block;
+  width: 180px;
+  height: 17px;
+  margin: 0 auto 4px;
+  padding: 2px;
+  box-shadow: var(--thin-sunken);
+  background-image: repeating-linear-gradient(
+    90deg,
+    var(--title) 0 9px,
+    transparent 9px 11px
+  );
+  background-origin: content-box;
+  background-clip: content-box;
+  background-repeat: no-repeat;
+  animation: fill 1.6s steps(16) infinite;
+}
+@keyframes fill {
+  from {
+    background-size: 0 100%;
+  }
+  to {
+    background-size: 100% 100%;
+  }
+}
+/* A loaded window reports progress in its status bar's place. */
+.win-loading {
+  position: absolute;
+  z-index: 3;
+  left: var(--win-pad);
+  right: var(--win-pad);
+  bottom: var(--win-pad);
+  height: var(--status-h);
+  margin: 0;
+  padding: 0 5px;
+  line-height: var(--status-h);
+  white-space: nowrap;
+  background: var(--face);
+  box-shadow: var(--thin-sunken);
+}
+.win-loading .progress {
+  display: inline-block;
+  width: 120px;
+  height: 14px;
+  margin: 0 8px 0 0;
+  vertical-align: -3px;
+}
+
+/*
+ * The error is a Win95 message box. It is filled with textContent, so its
+ * title bar, icon and OK button are drawn around the text, not inside it;
+ * clicking anywhere on it dismisses it.
+ */
+.dz-error {
+  position: absolute;
+  z-index: 30;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(300px, calc(100% - 16px));
+  padding: 30px 12px 44px 58px;
+  background: var(--face);
+  box-shadow: var(--raised);
+  text-align: left;
+  font-family: var(--ui-font);
+  font-size: 11px;
+  line-height: 1.4;
+  white-space: normal;
+  cursor: default;
+}
+.dz-error::before {
+  content: "docxDiff";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  right: 3px;
+  height: 18px;
+  padding: 0 4px;
+  line-height: 18px;
+  background: var(--title);
+  color: #fff;
+  font-weight: 700;
+}
+.dz-error::after {
+  content: "OK";
+  position: absolute;
+  left: 50%;
+  bottom: 10px;
+  transform: translateX(-50%);
+  width: 75px;
+  height: 23px;
+  line-height: 23px;
+  text-align: center;
+  background: var(--face);
+  box-shadow:
+    inset 0 0 0 1px #000,
+    inset -2px -2px var(--dark),
+    inset 2px 2px var(--hilite),
+    inset -3px -3px var(--shadow),
+    inset 3px 3px var(--light);
+}
+.dz-error {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23ff0000' stroke='%23800000' stroke-width='2'/%3E%3Cpath d='M10 10l12 12M22 10L10 22' stroke='%23fff' stroke-width='4'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-size: 32px 32px;
+  background-position: 14px 32px;
+  min-height: 108px;
+}
+
+/* ---------------------------------------------------------------- taskbar */
+
+.taskbar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 50;
+  height: var(--taskbar-h);
+  padding: 4px 2px 2px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--face);
+  box-shadow:
+    inset 0 1px var(--light),
+    inset 0 2px var(--hilite);
+}
+.start {
+  position: relative;
+  flex: none;
+}
+.start-btn {
+  height: 22px;
+  padding: 0 5px 0 3px;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  border: 0;
+  font-weight: 700;
+  background: var(--face);
+  box-shadow: var(--raised);
+  cursor: default;
+}
+.start-btn.on {
+  box-shadow: var(--pressed);
+}
+.start-btn svg {
+  width: 16px;
+  height: 14px;
+}
+.start-menu {
+  position: absolute;
+  left: 0;
+  bottom: 25px;
+  display: flex;
+  min-width: 190px;
+  padding: 3px;
+  background: var(--face);
+  box-shadow: var(--raised);
+}
+.start-banner {
+  width: 22px;
+  background: var(--shadow);
+  color: var(--face);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 6px;
+}
+.start-banner span {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.start-banner b {
+  color: #fff;
+}
+.start-items {
+  flex: 1;
+  padding-left: 2px;
+}
+.start-items .menu-item {
+  height: 30px;
+  padding: 0 14px 0 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.task-sep {
+  width: 2px;
+  height: 20px;
+  margin: 0 1px;
+  flex: none;
+  box-shadow:
+    inset 1px 0 var(--shadow),
+    inset -1px 0 var(--hilite);
+}
+.tasks {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  gap: 3px;
+}
+.task {
+  height: 22px;
+  width: 170px;
+  min-width: 0;
+  padding: 0 6px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border: 0;
+  background: var(--face);
+  box-shadow: var(--raised);
+  text-align: left;
+  cursor: default;
+}
+.task.on {
+  font-weight: 700;
+  box-shadow: var(--pressed);
+  background-image: repeating-conic-gradient(
+    var(--face) 0 25%,
+    var(--hilite) 0 50%
+  );
+  background-size: 2px 2px;
+}
+.task-text {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tray {
+  flex: none;
+  height: 22px;
+  padding: 0 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: var(--thin-sunken);
+  white-space: nowrap;
+}
+
+/* ---------------------------------------------------------------- About box */
+
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+}
+.msgbox {
+  width: min(380px, 100%);
+  padding: 3px;
+  background: var(--face);
+  box-shadow: var(--raised);
+}
+.msgbox .titlebar {
+  padding-right: 2px;
+}
+.msgbox-body {
+  display: flex;
+  gap: 14px;
+  padding: 16px 14px 10px;
+  line-height: 1.45;
+}
+.msgbox-body p {
+  margin: 0 0 8px;
+}
+.msgbox-actions {
+  display: flex;
+  justify-content: center;
+  padding: 0 0 10px;
+}
+
+/* ---------------------------------------------------------------- small screens */
+
+@media (max-width: 760px) {
+  :root {
+    --gap: 22px;
+  }
+  .desktop {
+    padding: 6px;
+  }
+  .cell {
+    padding: 4px 8px 4px 10px;
+  }
+  .doc-preview {
+    padding: 4px 8px 4px 10px;
+  }
+  .doc-preview,
+  .cell {
+    font-size: 13px;
+  }
+  .block-heading.h1 {
+    font-size: 17px;
+  }
+  .block-heading.h2 {
+    font-size: 15px;
+  }
+  .row-cells {
+    margin: 0 -8px 0 -10px;
+  }
+  .row-cell {
+    padding: 0 6px;
+  }
+  .row-cell:first-child {
+    padding-left: 10px;
+  }
+  .row-cell:last-child {
+    padding-right: 8px;
+  }
+  .dropzone {
+    margin: 8px;
+    padding: 12px 8px;
+  }
+  .statusbar .sb-cell,
+  .tray .tray-note {
+    display: none;
+  }
+  .task {
+    width: 40px;
+  }
+  .task-text {
+    display: none;
+  }
+}

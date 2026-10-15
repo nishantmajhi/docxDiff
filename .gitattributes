@@ -1,0 +1,5 @@
+# The vendored library must stay byte-for-byte what upstream published.
+vendor/** -text
+
+# .docx files are zips.
+*.docx binary

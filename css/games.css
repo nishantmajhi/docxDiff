@@ -1,0 +1,722 @@
+/*
+ * The game windows that open from the Start menu, their dialog boxes, and
+ * the games themselves. Builds on the bevels and window chrome in style.css.
+ */
+
+/* ---------------------------------------------------------------- taskbar */
+
+#tasks,
+#game-tasks {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+.tray {
+  margin-left: auto;
+}
+.task > svg {
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+
+/* While a game is the active window, the DiffPad windows are not. */
+body.game-focus #app .window .titlebar {
+  background: var(--title-off);
+  color: var(--face);
+}
+body.game-focus #tasks .task.on {
+  font-weight: normal;
+  box-shadow: var(--raised);
+  background-image: none;
+}
+
+/* ---------------------------------------------------------------- Start menu */
+
+.start-items .menu-item {
+  height: 40px;
+  padding: 0 18px 0 4px;
+  gap: 10px;
+  font-size: 11px;
+}
+.sm-icon {
+  width: 32px;
+  height: 32px;
+  flex: none;
+  display: grid;
+  place-items: center;
+}
+.sm-icon svg {
+  width: 32px;
+  height: 32px;
+}
+.start-items .menu-item:disabled .sm-icon {
+  filter: grayscale(1) opacity(0.5);
+}
+
+/* ---------------------------------------------------------------- windows */
+
+.game-layer {
+  position: fixed;
+  inset: 0 0 var(--taskbar-h) 0;
+  z-index: 20;
+  pointer-events: none;
+  overflow: hidden;
+}
+.game-layer > * {
+  pointer-events: auto;
+}
+.game-window,
+.game-dialog {
+  position: absolute;
+}
+.game-window.minimized,
+.game-dialog.minimized {
+  display: none;
+}
+.game-window.maximized {
+  left: 0 !important;
+  top: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+}
+.game-window.maximized .rz {
+  display: none;
+}
+.title-icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+}
+.title-icon svg {
+  width: 16px;
+  height: 16px;
+}
+.wm-buttons {
+  display: flex;
+  align-items: center;
+  flex: none;
+}
+.wm-buttons .title-btn {
+  width: 16px;
+  height: 14px;
+}
+.wm-buttons .title-btn.close {
+  margin-left: 2px;
+}
+.wm-buttons .title-btn svg.g-min {
+  width: 6px;
+  height: 2px;
+  transform: translateY(3px);
+}
+.wm-buttons .title-btn svg.g-max {
+  width: 9px;
+  height: 9px;
+}
+.wm-buttons .title-btn svg.g-close {
+  width: 8px;
+  height: 7px;
+}
+.wm-buttons .title-btn:active:not(:disabled) svg.g-min {
+  transform: translate(1px, 4px);
+}
+.game-menubar {
+  position: relative;
+}
+.game-menubar .menu-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.game-menubar .menu-item.checked::before {
+  content: "";
+  position: absolute;
+  left: 8px;
+  top: 5px;
+  width: 3px;
+  height: 7px;
+  border: solid currentColor;
+  border-width: 0 2px 2px 0;
+  transform: rotate(40deg);
+}
+.mi-key {
+  margin-left: auto;
+  padding-left: 28px;
+}
+.menu-info {
+  margin-left: auto;
+  padding: 0 8px;
+  white-space: nowrap;
+}
+.game-body {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  overflow: hidden;
+}
+.game-window:not(.resizable) .game-body {
+  flex: none;
+}
+.game-window .statusbar {
+  margin-top: 2px;
+}
+
+/* Edges and corners to resize from. */
+.rz {
+  position: absolute;
+  z-index: 5;
+}
+.rz-n,
+.rz-s {
+  left: 8px;
+  right: 8px;
+  height: 6px;
+  cursor: ns-resize;
+}
+.rz-n {
+  top: -2px;
+}
+.rz-s {
+  bottom: -2px;
+}
+.rz-e,
+.rz-w {
+  top: 8px;
+  bottom: 8px;
+  width: 6px;
+  cursor: ew-resize;
+}
+.rz-e {
+  right: -2px;
+}
+.rz-w {
+  left: -2px;
+}
+.rz-ne,
+.rz-nw,
+.rz-se,
+.rz-sw {
+  width: 12px;
+  height: 12px;
+}
+.rz-ne {
+  top: -2px;
+  right: -2px;
+  cursor: nesw-resize;
+}
+.rz-sw {
+  bottom: -2px;
+  left: -2px;
+  cursor: nesw-resize;
+}
+.rz-nw {
+  top: -2px;
+  left: -2px;
+  cursor: nwse-resize;
+}
+.rz-se {
+  bottom: -2px;
+  right: -2px;
+  cursor: nwse-resize;
+}
+
+body.wm-busy {
+  user-select: none;
+}
+
+/* A window under an open dialog takes no clicks of its own. */
+.wm-blocker {
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+}
+
+/* The outline that flies to and from the taskbar. */
+.wm-zoom {
+  position: fixed;
+  z-index: 55;
+  pointer-events: none;
+  border: 2px solid var(--shadow);
+  border-top: 14px solid var(--title);
+  transition:
+    left 0.18s linear,
+    top 0.18s linear,
+    width 0.18s linear,
+    height 0.18s linear;
+}
+
+/* ---------------------------------------------------------------- dialogs */
+
+.game-dialog {
+  min-width: 250px;
+  max-width: min(440px, 100%);
+}
+.dlg-main {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 14px 14px 8px;
+}
+.dlg-icon {
+  width: 32px;
+  height: 32px;
+  flex: none;
+}
+.dlg-body {
+  min-width: 0;
+  flex: 1;
+  line-height: 1.45;
+}
+.dlg-text {
+  margin: 0;
+}
+.dlg-buttons {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 6px 12px 12px;
+}
+.game-dialog.buttons-beside {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-rows: auto 1fr;
+}
+.buttons-beside .titlebar {
+  grid-column: 1 / -1;
+}
+.buttons-beside .dlg-buttons {
+  flex-direction: column;
+  justify-content: flex-start;
+  padding: 14px 12px 12px 0;
+}
+.game-dialog .btn95:not(.default) {
+  box-shadow: var(--raised);
+}
+.game-dialog .btn95:active {
+  box-shadow:
+    inset 0 0 0 1px #000,
+    var(--pressed);
+}
+.btn95:focus-visible {
+  outline: none;
+}
+.btn95:focus-visible .btn-label {
+  outline: 1px dotted #000;
+  outline-offset: 1px;
+}
+.btn95:disabled {
+  color: var(--shadow);
+  text-shadow: 1px 1px 0 var(--hilite);
+}
+.field95 {
+  font: inherit;
+  height: 21px;
+  padding: 2px 4px;
+  border: 0;
+  border-radius: 0;
+  background: #fff;
+  color: #000;
+  box-shadow: var(--sunken);
+  outline: none;
+  width: 100%;
+}
+.dlg-form label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 2px 0 8px;
+}
+.dlg-form .field95 {
+  width: 64px;
+}
+.dlg-table {
+  border-collapse: collapse;
+}
+.dlg-table td,
+.dlg-table th {
+  padding: 2px 14px 2px 0;
+  text-align: left;
+  white-space: nowrap;
+}
+.dlg-table th {
+  font-weight: normal;
+  border-bottom: 1px solid var(--shadow);
+}
+fieldset.group95 {
+  margin: 0 0 10px;
+  padding: 6px 10px 8px;
+  border: 0;
+  box-shadow:
+    inset -1px -1px var(--hilite),
+    inset 1px 1px var(--shadow),
+    inset -2px -2px var(--shadow),
+    inset 2px 2px var(--hilite);
+}
+fieldset.group95 legend {
+  padding: 0 3px;
+}
+.group95 label,
+.dlg-check {
+  display: block;
+  padding: 2px 0;
+}
+.group95 label input,
+.dlg-check input {
+  vertical-align: -2px;
+  margin-right: 6px !important;
+}
+.game-dialog input[type="radio"],
+.game-dialog input[type="checkbox"] {
+  margin: 0;
+  accent-color: #000;
+}
+.game-dialog.flash .titlebar {
+  animation: dlg-flash 0.1s steps(1) 4;
+}
+@keyframes dlg-flash {
+  50% {
+    background: var(--title-off);
+  }
+}
+
+/* ---------------------------------------------------------------- Minesweeper */
+
+.ms {
+  padding: 6px;
+  background: var(--face);
+  box-shadow: inset 3px 3px var(--hilite);
+  user-select: none;
+}
+.ms-top {
+  height: 37px;
+  margin-bottom: 6px;
+  padding: 0 6px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow:
+    inset 2px 2px var(--shadow),
+    inset -2px -2px var(--hilite);
+}
+.ms-led {
+  display: flex;
+  background: #000;
+  padding: 1px;
+  box-shadow: 0 0 0 1px var(--shadow);
+}
+.ms-digit {
+  display: block;
+  width: 13px;
+  height: 23px;
+}
+.ms-face {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 0;
+  display: grid;
+  place-items: center;
+  background: var(--face);
+  box-shadow:
+    0 0 0 1px var(--shadow),
+    inset -2px -2px var(--shadow),
+    inset 2px 2px var(--hilite);
+  cursor: default;
+}
+.ms-face.down {
+  box-shadow:
+    0 0 0 1px var(--shadow),
+    inset 1px 1px var(--shadow);
+}
+.ms-face.down .ms-smiley {
+  transform: translate(1px, 1px);
+}
+.ms-smiley {
+  width: 17px;
+  height: 17px;
+}
+.ms-grid {
+  display: grid;
+  padding: 3px;
+  background: var(--face);
+  box-shadow:
+    inset 3px 3px var(--shadow),
+    inset -3px -3px var(--hilite);
+  touch-action: none;
+  -webkit-touch-callout: none;
+}
+.ms-cell {
+  width: 16px;
+  height: 16px;
+  font:
+    bold 13px/16px Tahoma,
+    "Arial Black",
+    Arial,
+    sans-serif;
+  text-align: center;
+  background-repeat: no-repeat;
+  background-position: center;
+  cursor: default;
+}
+.ms-cell.c {
+  box-shadow:
+    inset -2px -2px var(--shadow),
+    inset 2px 2px var(--hilite);
+}
+.ms-cell.o {
+  box-shadow: inset 1px 1px var(--shadow);
+}
+.ms-cell.q::after {
+  content: "?";
+}
+.ms-cell.o.q::after {
+  position: relative;
+  top: 0;
+}
+.n1 {
+  color: #0000ff;
+}
+.n2 {
+  color: #008000;
+}
+.n3 {
+  color: #ff0000;
+}
+.n4 {
+  color: #000080;
+}
+.n5 {
+  color: #800000;
+}
+.n6 {
+  color: #008080;
+}
+.n7 {
+  color: #000000;
+}
+.n8 {
+  color: #808080;
+}
+.ms-cell.f {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' shape-rendering='crispEdges'%3E%3Cpath d='M8 3h1v8H8z'/%3E%3Cpath d='M8 3v5L4 5.5z' fill='%23f00'/%3E%3Cpath d='M6 11h5v1H6zM4 12h9v2H4z'/%3E%3C/svg%3E");
+}
+.ms-cell.mine {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='4.5'/%3E%3Cpath d='M8 1.5v13M1.5 8h13M3.5 3.5l9 9M12.5 3.5l-9 9' stroke='%23000' stroke-width='1.2'/%3E%3Cpath d='M6 6h2v2H6z' fill='%23fff'/%3E%3C/svg%3E");
+}
+.ms-cell.boom {
+  background-color: #ff0000;
+}
+.ms-cell.wrong {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='4.5'/%3E%3Cpath d='M8 1.5v13M1.5 8h13M3.5 3.5l9 9M12.5 3.5l-9 9' stroke='%23000' stroke-width='1.2'/%3E%3Cpath d='M6 6h2v2H6z' fill='%23fff'/%3E%3Cpath d='M2 2l12 12M14 2L2 14' stroke='%23f00' stroke-width='1.6'/%3E%3C/svg%3E");
+}
+
+/* ---------------------------------------------------------------- cards */
+
+.card-host {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: #008000;
+}
+.card-board {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: 0 0;
+  background: #008000;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  overflow: hidden;
+}
+.card,
+.slot {
+  position: absolute;
+  width: 71px;
+  height: 96px;
+}
+.card > svg {
+  display: block;
+  width: 71px;
+  height: 96px;
+}
+.card.returning {
+  transition:
+    left 0.15s ease-out,
+    top 0.15s ease-out;
+}
+.card.selected > svg {
+  filter: invert(1);
+}
+.slot {
+  border: 1px solid #004000;
+  border-radius: 3px;
+  box-shadow: inset 1px 1px 0 #00a000;
+}
+.slot svg {
+  display: block;
+  margin: 0 auto;
+}
+.cb {
+  position: relative;
+  width: 71px;
+  height: 96px;
+  border: 1px solid #000;
+  border-radius: 3px;
+  background: #fff;
+  overflow: hidden;
+}
+.cb::before {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
+}
+.cb > svg {
+  position: absolute;
+  left: 3px;
+  top: 3px;
+  width: 63px;
+  height: 88px;
+}
+.cb-weave::before {
+  background:
+    repeating-linear-gradient(45deg, #0050c8 0 1.5px, transparent 1.5px 4px),
+    repeating-linear-gradient(-45deg, #0050c8 0 1.5px, #fff 1.5px 4px);
+}
+.cb-weave-red::before {
+  background:
+    repeating-linear-gradient(45deg, #c00000 0 1.5px, transparent 1.5px 4px),
+    repeating-linear-gradient(-45deg, #c00000 0 1.5px, #fff 1.5px 4px);
+}
+.cb-fish::before {
+  background: #0058c8;
+}
+.cb-castle::before {
+  background: linear-gradient(#000040, #2848a8);
+}
+.cb-roses::before {
+  background:
+    radial-gradient(circle at 25% 25%, #ffc8d8 0 20%, transparent 21%) 0 0 /
+      12px 12px,
+    #fff0f4;
+}
+.cb-shell::before {
+  background: linear-gradient(#58b8e0, #2878b0);
+}
+
+/* The back picker in Solitaire's Deck dialog. */
+.back-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 77px);
+  gap: 10px;
+}
+.back-choice {
+  padding: 3px;
+  border: 0;
+  background: transparent;
+  cursor: default;
+}
+.back-choice.on {
+  outline: 2px solid var(--title);
+  outline-offset: 0;
+}
+
+/* ---------------------------------------------------------------- Solitaire */
+
+.win-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 5000;
+  cursor: default;
+}
+.stock-slot {
+  display: grid;
+  place-items: center;
+}
+.sol-options {
+  min-width: 220px;
+}
+
+/* ---------------------------------------------------------------- FreeCell */
+
+.fc .fc-cell {
+  border-color: #000;
+  box-shadow: none;
+}
+.fc .fc-empty {
+  border-color: #006000;
+  box-shadow: none;
+}
+.col-hit {
+  position: absolute;
+  width: 71px;
+  z-index: 0;
+}
+.fc-king {
+  position: absolute;
+  width: 36px;
+  height: 36px;
+  padding: 1px;
+  background: #008000;
+  box-shadow:
+    inset 1px 1px #004000,
+    inset -1px -1px #00c000;
+}
+.fc-king svg {
+  display: block;
+  width: 32px;
+  height: 32px;
+  margin: 1px;
+  transform: scaleX(-1);
+}
+.fc-king.right svg {
+  transform: none;
+}
+
+/* ---------------------------------------------------------------- Hearts */
+
+.card.sideways {
+  transform: rotate(90deg);
+}
+.hn-name {
+  position: absolute;
+  width: 120px;
+  text-align: center;
+  color: #fff;
+  font-weight: 700;
+  text-shadow: 1px 1px 0 #003000;
+  pointer-events: none;
+  z-index: 200;
+}
+.hn-score {
+  margin-left: 6px;
+  font-weight: 400;
+  color: #ffff80;
+}
+.hn-pass {
+  position: absolute;
+  z-index: 300;
+  width: 100px;
+}
+.hn-pass:not(.default) {
+  box-shadow: var(--raised);
+}
+.hn-sheet {
+  max-height: 260px;
+  overflow: auto;
+}
+.hn-sheet .dlg-table td {
+  text-align: right;
+}
+.hn-sheet .dlg-table td:first-child {
+  text-align: left;
+}
+.hn-sheet tr.total td {
+  border-top: 1px solid var(--shadow);
+  font-weight: 700;
+}
